@@ -1,0 +1,17 @@
+./scripts/burnin_ethernet.sh eth0 $1 2>&1 &
+./scripts/burnin_ethernet.sh enp1s0 $1 2>&1 &
+./scripts/burnin_wifi.sh $1 2>&1 &
+./scripts/burnin_i2c.sh $1 2>&1 &
+./scripts/burnin_cpueater.sh $1 2>&1 &
+./scripts/burnin_memory.sh $1 2>&1 &
+./scripts/burnin_emmc.sh ${2}p1 $1 eMMC 2>&1 &
+for ((i=3; i<=$#; i++))
+do
+	if [[ "${!i}" == sd* ]];then
+		./scripts/burnin_udisk.sh ${!i}1 $1 USB 2>&1 &
+	fi
+done
+./scripts/burnin_show_pic_lvds.sh $1 2>&1 &
+./scripts/burnin_play_audio.sh $1 2>&1 &
+./scripts/burnin_temperature.sh $1 1 2>&1 &
+./scripts/burnin_frequency.sh $1 1 2>&1 &

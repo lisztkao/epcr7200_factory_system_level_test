@@ -1,0 +1,76 @@
+#!/bin/bash
+
+log_partition_init() {
+        if [[ ! -e "/dev/$1p2" ]]; then
+                echo "Create log partition"
+        fdisk /dev/$1 &>/dev/null << EOF
+n
+p
+2
++1024M
++2048M
+w
+EOF
+                partprobe
+        sync && sync && sleep 1
+        mkfs.ext4 /dev/$1p2 &>/dev/null
+        sync && sync && sleep 1
+                mkdir -p /usr/advtest/tool/burnin/log/
+                echo "Mount log partition to /usr/advtest/tool/burnin/log"
+                mount /dev/$1p2 /usr/advtest/tool/burnin/log &>/dev/null
+        else
+        echo "log partition exist"
+                mountpoint=`mount |grep "/dev/${1}p2" |awk '{print $3}'`
+                if [[ $mountpoint == "" ]]; then
+                        mkdir -p /usr/advtest/tool/burnin/log/
+                        echo "Mount log partition to /usr/advtest/tool/burnin/log"
+                        mount /dev/$1p2 /usr/advtest/tool/burnin/log &>/dev/null
+                else
+                        echo "The log partition has been mounted on the $mountpoint"
+                fi
+
+        fi
+
+}
+
+mkdir -p /usr/advtest/tool/burnin/data/video
+#if [ ! -f "/usr/advtet/tool/burnin/data/video/1.mp4" ]; then
+#	echo "please put 1.mp4 in /usr/advtet/tool/burnin/data/video/"
+#	exit 1
+#fi
+
+cd /usr/advtest/tool/burnin/
+umount /dev/mmcblk2p2 2>/dev/null 1>/dev/null
+umount /run/media/* 2>/dev/null 1>/dev/null
+#sleep 5
+log_partition_init mmcblk2
+ln -s /dev/mmcblk2p2 /dev/mmcblk0p2 2>/dev/null 1>/dev/null
+umount /usr/advtest/tool/burnin/log 2>/dev/null 1>/dev/null
+mount /dev/mmcblk0p2 /usr/advtest/tool/burnin/log 2>/dev/null 1>/dev/null
+
+
+rm -rf /usr/advtest/tool/burnin/log/*
+udhcpc -i eth0
+udhcpc -i eth1
+sleep 5
+
+
+
+./scripts/burnin_ethernet.sh eth0 0 2>&1 &
+./scripts/burnin_ethernet.sh eth1 0 2>&1 &
+#./scripts/burnin_wifi.sh 0 2>&1 &
+./scripts/burnin_cpueater.sh 10 2>&1 &
+./scripts/burnin_memory.sh 0 2>&1 &
+./scripts/burnin_emmc.sh mmcblk2p1 0 eMMC 2>&1 &
+./scripts/burnin_emmc.sh mmcblk3p1 0 eMMC 2>&1 &
+./scripts/burnin_udisk.sh sda1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdb1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdc1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdd1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sde1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdf1 0 USB 2>&1 &
+./scripts/burnin_play_audio.sh 0 2>&1 &
+./scripts/burnin_temperature.sh 0 1 2>&1 &
+./scripts/burnin_frequency.sh 0 1 2>&1 &
+./scripts/burnin_play_video.sh 0 2>&1 &
+

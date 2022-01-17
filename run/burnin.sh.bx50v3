@@ -1,0 +1,105 @@
+#!/bin/bash
+
+NETWORK=dlink-6120-5GHz
+PASSWORD=vqpwh99498
+INTERFACE=wlan0
+DRIVERTYPE=nl80211
+
+ETH0_IP=172.17.7.122
+ETH1_IP=192.168.10.122
+ETH2_IP=198.7.11.122
+HOST0_IP=172.17.7.100
+HOST1_IP=192.168.10.100
+HOST2_IP=198.7.11.100
+
+log_partition_init() {
+        if [[ ! -e "/dev/$1p2" ]]; then
+                echo "Create log partition"
+        fdisk /dev/$1 &>/dev/null << EOF
+n
+p
+2
++1024M
++2048M
+w
+EOF
+                partprobe
+        sync && sync && sleep 1
+        mkfs.ext4 /dev/$1p2 &>/dev/null
+        sync && sync && sleep 1
+                mkdir -p /usr/advtest/tool/burnin/log/
+                echo "Mount log partition to /usr/advtest/tool/burnin/log"
+                mount /dev/$1p2 /usr/advtest/tool/burnin/log &>/dev/null
+        else
+        echo "log partition exist"
+                mountpoint=`mount |grep "/dev/${1}p2" |awk '{print $3}'`
+                if [[ $mountpoint == "" ]]; then
+                        mkdir -p /usr/advtest/tool/burnin/log/
+                        echo "Mount log partition to /usr/advtest/tool/burnin/log"
+                        mount /dev/$1p2 /usr/advtest/tool/burnin/log &>/dev/null
+                else
+                        echo "The log partition has been mounted on the $mountpoint"
+                fi
+
+        fi
+
+}
+
+
+#killall wpa_supplicant &>/dev/null
+#sleep 1
+#rfkill unblock all &>/dev/null
+#wpa_passphrase $NETWORK $PASSWORD > /tmp/wpa.conf
+#wpa_supplicant -D $DRIVERTYPE -c/tmp/wpa.conf -i$INTERFACE -B
+#udhcpc -i $INTERFACE
+
+
+cd /usr/advtest/tool/burnin/
+umount /dev/mmcblk1p2 2>/dev/null 1>/dev/null
+umount /dev/mmcblk0p2 2>/dev/null 1>/dev/null
+umount /run/media/* 2>/dev/null 1>/dev/null
+sleep 5
+log_partition_init mmcblk1
+ln -s /dev/mmcblk1p2 /dev/mmcblk0p2 2>/dev/null 1>/dev/null
+umount /usr/advtest/tool/burnin/log 2>/dev/null 1>/dev/null
+mount /dev/mmcblk0p2 /usr/advtest/tool/burnin/log 2>/dev/null 1>/dev/null
+
+
+source /usr/advtest/tool/util/enable_switch.sh
+rm -rf /usr/advtest/tool/burnin/log/*
+#udhcpc -i eth0
+#udhcpc -i eth1
+
+#ifconfig eth0 down
+#ifconfig eth1 down
+#ifconfig eth2 down
+
+ifconfig eth0 $ETH0_IP up
+ifconfig eth1 $ETH1_IP up
+ifconfig eth2 $ETH2_IP up
+
+sleep 5
+
+#iperf -c $HOST0_IP -i 5 -t 43200 -d 2>&1 | tee -a /usr/advtest/tool/burnin/log/eth0.log &
+#sleep 10
+#iperf -c $HOST1_IP -i 5 -t 43200 -d 2>&1 | tee -a /usr/advtest/tool/burnin/log/eth1.log &
+#sleep 10
+#iperf -c $HOST2_IP -i 5 -t 43200 -d 2>&1 | tee -a /usr/advtest/tool/burnin/log/eth2.log &
+#sleep 10
+
+./scripts/burnin_show_pic_lvds.sh 0 2>&1 &
+#./scripts/burnin_ethernet.sh eth0 0 2>&1 &
+#./scripts/burnin_ethernet.sh eth1 0 2>&1 &
+#./scripts/burnin_ethernet.sh eth2 0 2>&1 &
+#./scripts/burnin_wifi.sh 0 2>&1 &
+./scripts/burnin_cpueater.sh 10 2>&1 &
+./scripts/burnin_memory.sh 0 2>&1 &
+./scripts/burnin_emmc.sh mmcblk1p1 0 eMMC 2>&1 &
+./scripts/burnin_udisk.sh sda1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdb1 0 USB 2>&1 &
+./scripts/burnin_udisk.sh sdc1 0 USB 2>&1 &
+#./scripts/burnin_udisk.sh sdd1 0 USB 2>&1 &
+./scripts/burnin_play_audio.sh 0 2>&1 &
+./scripts/burnin_temperature.sh 0 1 2>&1 &
+./scripts/burnin_frequency.sh 0 1 2>&1 &
+
