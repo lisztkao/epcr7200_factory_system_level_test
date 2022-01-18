@@ -499,7 +499,13 @@ do_test() {
 				;;
 			7)
 				read -p "Enter mac addres (ex: D4E5F6123456 ) : " mac
-				write_i210_macaddress $mac
+				id=`lspci | grep I210 | awk '{print $1}'`
+				if [ -z "$id" ]; then
+					echo "Cannot found the I210 ethernet."
+					exit 1
+				fi
+				setpci -s $id COMMAND=0007
+				./bin/EepromAccessTool -nic=1 -f=./bin/Dev_Start_I210_Copper_NOMNG_8Mb_A2_3.25_0.03.hex -mac=$mac
 				pause 'Press any key to continue...'
 				;;
 			Q|q|E|e)
